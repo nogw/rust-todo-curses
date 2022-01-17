@@ -6,12 +6,12 @@ const COLOR_BACKGROUND: i16 = 20;
 const COLOR_KEYWORD: i16 = 15; 
 const COLOR_PAIR_KEYWORD: i16 = 2;
 
-fn uplist(todos: &Vec<&str>, todo_curr: &mut usize) {
+fn uplist(todos: &Vec<(bool, &str)>, todo_curr: &mut usize) {
   if *todo_curr > 0 { *todo_curr -= 1 } 
   else { *todo_curr = todos.len() - 1 }
 }
 
-fn dwlist(todos: &Vec<&str>, todo_curr: &mut usize) {
+fn dwlist(todos: &Vec<(bool, &str)>, todo_curr: &mut usize) {
   if *todo_curr < todos.len() - 1 { *todo_curr += 1 }
   else { *todo_curr = 0 }
 }
@@ -27,24 +27,26 @@ fn main() {
   
   let mut quit = false;
   
-  let mut todos = Vec::from(["Atodo", "Btodo", "Ctodo"]);
+  let mut todos = Vec::from(
+    [(true, "Atodo"), 
+     (false, "Btodo"), 
+     (false, "Ctodo")]);
   let mut todo_curr = 0;
-
-  // let mut dones = Vec::<String>::new();
-  // let mut done_curr = 0;
 
   while !quit {
     erase();
     
-    for (index, todo) in todos.iter_mut().enumerate() {
+    for (index, (marked, content)) in todos.iter_mut().enumerate() {
       mv(index as i32, 0);
+      
+      let todo = &format!("[{}] {}", if *marked {"x"} else {" "}, content); 
   
       if index == todo_curr {
         attron(COLOR_PAIR(2));
-        addstr(&format!("[ ] {}", todo));
+        addstr(todo);
         attroff(COLOR_PAIR(2));
       } else {
-        addstr(&format!("[ ] {}", todo));
+        addstr(todo);
       }
     } 
 
