@@ -1,5 +1,2 @@
 Todo,todoA 
-Done,todoB
-Todo,todoC
 Todo,todoD
-Done,todoE

@@ -131,6 +131,13 @@ fn parse_line(line: &str) -> Option<(TodoStatus, &str)>  {
   todo.or(done)
 }
 
+fn parse_to_string(status: &TodoStatus, content: &String) -> String {
+  match status {
+    TodoStatus::Todo => format!("Todo,{}", content),
+    TodoStatus::Done => format!("Done,{}", content)
+  }
+}
+
 fn load_todos(todos: &mut Vec<(TodoStatus, String)>, file_path: &str) -> io::Result<()> {
   let file = File::open(file_path)?;
 
@@ -145,6 +152,14 @@ fn load_todos(todos: &mut Vec<(TodoStatus, String)>, file_path: &str) -> io::Res
       }
     }
   } Ok(())
+}
+
+fn save_todos(todos: &[(TodoStatus, String)], file_path: &str) {
+  let mut file = File::create(file_path).unwrap();
+  
+  for (status, todo) in todos {
+    writeln!(file, "{}", parse_to_string(status, todo)).unwrap()
+  }
 }
 
 fn main() {
@@ -246,5 +261,6 @@ fn main() {
     }
   }
 
+  save_todos(&todos, "teste.txt");
   endwin();
 }
