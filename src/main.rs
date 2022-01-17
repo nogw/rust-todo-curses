@@ -16,6 +16,11 @@ fn dwlist(todos: &Vec<(bool, &str)>, todo_curr: &mut usize) {
   else { *todo_curr = 0 }
 }
 
+fn marktd(todos: &mut Vec<(bool, &str)>, todo_curr: usize) {
+  let (mark, content) = todos[todo_curr];
+  todos[todo_curr] = (!mark, content)
+}
+
 fn main() {
   initscr();
   noecho();
@@ -31,6 +36,7 @@ fn main() {
     [(true, "Atodo"), 
      (false, "Btodo"), 
      (false, "Ctodo")]);
+
   let mut todo_curr = 0;
 
   while !quit {
@@ -53,9 +59,10 @@ fn main() {
     let key = getch() as u8 as char;
 
     match key {
-      'A' => uplist(&todos, &mut todo_curr),
-      'B' => dwlist(&todos, &mut todo_curr),
-      'q' => quit = true,
+      'A'  => uplist(&todos, &mut todo_curr),
+      'B'  => dwlist(&todos, &mut todo_curr),
+      '\n' => marktd(&mut todos, todo_curr),
+      'q'  => quit = true,
       _   => {}
     }
   }
