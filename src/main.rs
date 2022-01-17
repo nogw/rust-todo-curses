@@ -1,6 +1,8 @@
 extern crate ncurses;
 
 use ncurses::*;
+use std::fs::File;
+use std::io::{ self, BufRead, ErrorKind, Write };
 
 const COLOR_BACKGROUND: i16 = 15;
 const COLOR_KEYWORD: i16 = 0; 
@@ -17,6 +19,12 @@ struct Ui {
   height: i32,
   width: i32,
   key: Option<i32>
+}
+
+#[derive(Debug)]
+enum TodoStatus {
+  Todo,
+  Done
 }
 
 impl Ui {
@@ -82,23 +90,32 @@ impl Ui {
   }
 }
 
-fn uplist(todos: &Vec<(bool, String)>, todo_curr: &mut usize) {
+impl TodoStatus {
+  fn toggle(&self) -> Self {
+    match self {
+      Self::Todo => Self::Done,
+      Self::Done => Self::Todo,
+    }
+  }
+}
+
+fn uplist(todos: &Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
   if *todo_curr > 0 { *todo_curr -= 1 } 
   else { if todos.len() > 0 { *todo_curr = todos.len() - 1 } }
 }
 
-fn dwlist(todos: &Vec<(bool, String)>, todo_curr: &mut usize) {
+fn dwlist(todos: &Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
   if todos.len() > 0 && *todo_curr < (todos.len() - 1) { *todo_curr += 1 }
   else { *todo_curr = 0 }
 }
 
-fn marktd(todos: &mut Vec<(bool, String)>, todo_curr: usize) {
+fn marktd(todos: &mut Vec<(TodoStatus, String)>, todo_curr: usize) {
   if todos.len() > todo_curr 
   { let (mark, content) = &todos[todo_curr];
-    todos[todo_curr] = (!mark, String::from(content)) } 
+    todos[todo_curr] = (TodoStatus::toggle(mark), String::from(content)) } 
 }
 
-fn delete(todos: &mut Vec<(bool, String)>, todo_curr: &mut usize) {
+fn delete(todos: &mut Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
   if todos.len() > 0 { 
     todos.remove(*todo_curr); 
     
@@ -106,6 +123,28 @@ fn delete(todos: &mut Vec<(bool, String)>, todo_curr: &mut usize) {
     && todos.len() != 0
     { *todo_curr -= 1 }
   } 
+}
+
+fn parse_line(line: &str) -> Option<(TodoStatus, &str)>  {
+  let todo = line.strip_prefix("Todo,").map(|content| (TodoStatus::Todo, content));
+  let done = line.strip_prefix("Done,").map(|content| (TodoStatus::Done, content));
+  todo.or(done)
+}
+
+fn load_todos(todos: &mut Vec<(TodoStatus, String)>, file_path: &str) -> io::Result<()> {
+  let file = File::open(file_path)?;
+
+  for (index, line) in io::BufReader::new(file).lines().enumerate() {
+    match parse_line(&line?) {
+      // i can abstract this?
+      Some((TodoStatus::Todo, content)) => todos.push((TodoStatus::Todo, content.to_string())),
+      Some((TodoStatus::Done, content)) => todos.push((TodoStatus::Done, content.to_string())),
+      _ => {
+        eprintln!("ERROR: at {}:{}", file_path, index + 1);
+        std::process::exit(1);
+      }
+    }
+  } Ok(())
 }
 
 fn main() {
@@ -122,15 +161,25 @@ fn main() {
   let mut quit = false;
   let mut ui = Ui::default();
 
-  let mut todos = Vec::from(
-    [(true,  String::from("Atodo")), 
-     (false, String::from("Btodo")), 
-     (false, String::from("Ctodo"))]);
-
+  let mut todos = Vec::<(TodoStatus, String)>::new();
   let mut todo_curr: usize = 0;
 
   let mut editing = false;
   let mut editing_cursor = 0;
+
+  match load_todos(&mut todos, "teste.txt") {
+    Ok(()) => (),
+    Err(err) => {
+      if err.kind() == ErrorKind::NotFound {
+        // temporary
+        println!("new file created")
+      } else {
+        panic!(
+          "{}", err
+        )
+      }
+    }
+  }
 
   while !quit {
     erase();
@@ -151,7 +200,7 @@ fn main() {
     for (index, (marked, content)) in todos.iter_mut().enumerate() {
       mv(index as i32, 0);
       
-      let todo = &format!("[{}] {}", if *marked {"x"} else {" "}, content); 
+      let todo = &format!("[{}] {}", if matches!(marked, TodoStatus::Done) {"x"} else {" "}, content); 
        
       if index == todo_curr {
         attron(COLOR_PAIR(2) | A_BOLD());
@@ -178,7 +227,7 @@ fn main() {
         'D' => marktd(&mut todos, todo_curr),
         'C' => delete(&mut todos, &mut todo_curr),
         ';' => {
-          todos.insert(0, (false, String::new())); 
+          todos.insert(0, (TodoStatus::Todo, String::new())); 
           editing_cursor = 0;
           editing = true;
         },
