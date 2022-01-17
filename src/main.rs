@@ -171,7 +171,9 @@ fn load_todos(todos: &mut Vec<(TodoStatus, String)>, file_path: &str) -> io::Res
 fn save_todos(todos: &[(TodoStatus, String)], file_path: &str) {
   let mut file = File::create(file_path).unwrap();
   for (status, todo) in todos {
-    writeln!(file, "{}", parse_to_string(status, todo)).unwrap()
+    if todo.len() > 0 {
+      writeln!(file, "{}", parse_to_string(status, todo)).unwrap()
+    }
   }
 }
 
