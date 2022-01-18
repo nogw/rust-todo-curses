@@ -1,7 +1,15 @@
 # rust-todo-curses
 
-### TODO:
-- solve "add new todo" problem 
-- add information about when TODO was created
-- change keys to VIM style
-- FIX Cursor
+### KEYS:
+
+`K: ` scroll up </br>
+`J: ` scroll down </br>
+`D: ` mark as DONE </br>
+`A: ` delete TODO </br>
+`E: ` creates a new TODO </br>
+`R: ` edit current TODO
+
+---
+
+### INTERFACE:
+![todo-rs](interface.png)

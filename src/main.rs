@@ -200,6 +200,7 @@ fn main() {
 
   let mut quit = false;
   let mut ui = Ui::default();
+  let file = "file.todos";
 
   let mut todos = Vec::<(Status, String, String)>::new();
   let mut todo_curr: usize = 0;
@@ -207,7 +208,7 @@ fn main() {
   let mut editing = false;
   let mut editing_cursor = 0;
 
-  match load_todos(&mut todos, "todos.txt") {
+  match load_todos(&mut todos, file) {
     Ok(()) => (),
     Err(err) => {
       if err.kind() == ErrorKind::NotFound {
@@ -299,6 +300,6 @@ fn main() {
     }
   }
 
-  save_todos(&todos, "todos.txt");
+  save_todos(&todos, file);
   endwin();
 }
