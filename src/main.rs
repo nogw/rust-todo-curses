@@ -278,6 +278,7 @@ fn main() {
         'e' | 'E' => {
           let time = chrono::offset::Local::now().format("%b %d %H:%M:%S");
           todos.insert(0, (Status::Todo, String::new(), time.to_string()));
+          todo_curr = 0;
           editing_cursor = 0;
           editing = true;
         }
