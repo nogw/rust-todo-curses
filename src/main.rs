@@ -103,7 +103,7 @@ impl TodoStatus {
   }
 }
 
-fn uplist(todos: &Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
+fn uplist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
   if *todo_curr > 0 {
     *todo_curr -= 1
   } else {
@@ -113,7 +113,7 @@ fn uplist(todos: &Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
   }
 }
 
-fn dwlist(todos: &Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
+fn dwlist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
   if todos.len() > 0 && *todo_curr < (todos.len() - 1) {
     *todo_curr += 1
   } else {
@@ -121,14 +121,14 @@ fn dwlist(todos: &Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
   }
 }
 
-fn marktd(todos: &mut Vec<(TodoStatus, String)>, todo_curr: usize) {
+fn marktd(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: usize) {
   if todos.len() > todo_curr {
-    let (mark, content) = &todos[todo_curr];
-    todos[todo_curr] = (TodoStatus::toggle(mark), String::from(content))
+    let (mark, a, b) = &todos[todo_curr];
+    todos[todo_curr] = (TodoStatus::toggle(mark), a.to_string(), b.to_string())
   }
 }
 
-fn delete(todos: &mut Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
+fn delete(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
   if todos.len() > 0 {
     todos.remove(*todo_curr);
 
@@ -138,31 +138,37 @@ fn delete(todos: &mut Vec<(TodoStatus, String)>, todo_curr: &mut usize) {
   }
 }
 
-fn parse_line(line: &str) -> Option<(TodoStatus, &str)> {
+fn parse_line(line: &str) -> Option<(TodoStatus, String, String)> {
+  let t = |b: TodoStatus, a: Vec<&str>| (b, a[0].to_string(), a[1].to_string());
+
   let todo = line
     .strip_prefix("Todo,")
-    .map(|content| (TodoStatus::Todo, content));
+    .map(|content| t(TodoStatus::Todo, content.split(",").collect()));
   let done = line
     .strip_prefix("Done,")
-    .map(|content| (TodoStatus::Done, content));
+    .map(|content| t(TodoStatus::Done, content.split(",").collect()));
   todo.or(done)
 }
 
-fn parse_to_string(status: &TodoStatus, content: &String) -> String {
+fn parse_to_string(status: &TodoStatus, content: &String, time: &String) -> String {
   match status {
-    TodoStatus::Todo => format!("Todo,{}", content),
-    TodoStatus::Done => format!("Done,{}", content),
+    TodoStatus::Todo => format!("Todo,{},{}", content, time),
+    TodoStatus::Done => format!("Done,{},{}", content, time),
   }
 }
 
-fn load_todos(todos: &mut Vec<(TodoStatus, String)>, file_path: &str) -> io::Result<()> {
+fn load_todos(todos: &mut Vec<(TodoStatus, String, String)>, file_path: &str) -> io::Result<()> {
   let file = File::open(file_path)?;
 
   for (index, line) in io::BufReader::new(file).lines().enumerate() {
     match parse_line(&line?) {
       // i can abstract this?
-      Some((TodoStatus::Todo, content)) => todos.push((TodoStatus::Todo, content.to_string())),
-      Some((TodoStatus::Done, content)) => todos.push((TodoStatus::Done, content.to_string())),
+      Some((TodoStatus::Todo, content, time)) => {
+        todos.push((TodoStatus::Todo, content.to_string(), time.to_string()))
+      }
+      Some((TodoStatus::Done, content, time)) => {
+        todos.push((TodoStatus::Done, content.to_string(), time.to_string()))
+      }
       _ => {
         eprintln!("ERROR: at {}:{}", file_path, index + 1);
         std::process::exit(1);
@@ -172,11 +178,11 @@ fn load_todos(todos: &mut Vec<(TodoStatus, String)>, file_path: &str) -> io::Res
   Ok(())
 }
 
-fn save_todos(todos: &[(TodoStatus, String)], file_path: &str) {
+fn save_todos(todos: &[(TodoStatus, String, String)], file_path: &str) {
   let mut file = File::create(file_path).unwrap();
-  for (status, todo) in todos {
+  for (status, todo, time) in todos {
     if todo.len() > 0 {
-      writeln!(file, "{}", parse_to_string(status, todo)).unwrap()
+      writeln!(file, "{}", parse_to_string(status, todo, time)).unwrap()
     }
   }
 }
@@ -195,7 +201,7 @@ fn main() {
   let mut quit = false;
   let mut ui = Ui::default();
 
-  let mut todos = Vec::<(TodoStatus, String)>::new();
+  let mut todos = Vec::<(TodoStatus, String, String)>::new();
   let mut todo_curr: usize = 0;
 
   let mut editing = false;
@@ -217,17 +223,21 @@ fn main() {
     erase();
     ui.layout();
 
-    // let (_, at) = &todos[todo_curr];
-    let header = subwin(stdscr(), 1, 80, ui.height - 2, 0);
-    wattron(header, COLOR_PAIR(1) | A_BOLD());
-    waddstr(
-      header,
-      &format!("todos: {} - current: {}", todos.len(), "at"),
-    );
-    wbkgd(header, COLOR_PAIR(1) | A_BOLD());
-    wattroff(header, COLOR_PAIR(1) | A_BOLD());
+    let message: String;
 
-    for (index, (marked, content)) in todos.iter_mut().enumerate() {
+    if let Some((_, _, at)) = &todos.get(todo_curr) {
+      message = format!("[todos: {}] created at: {}", todos.len(), at)
+    } else {
+      message = format!("Press 'E' to create a new todo")
+    }
+
+    let bar = subwin(stdscr(), 1, ui.width, ui.height - 2, 0);
+    wattron(bar, COLOR_PAIR(1) | A_BOLD());
+    waddstr(bar, &message);
+    wbkgd(bar, COLOR_PAIR(1) | A_BOLD());
+    wattroff(bar, COLOR_PAIR(1) | A_BOLD());
+
+    for (index, (marked, content, _)) in todos.iter_mut().enumerate() {
       mv(index as i32, 0);
 
       let todo = &format!(
@@ -264,8 +274,8 @@ fn main() {
         'd' => marktd(&mut todos, todo_curr),
         'a' => delete(&mut todos, &mut todo_curr),
         'e' => {
-          // let time = chrono::offset::Local::now().format("%b %d %H:%M:%S");
-          todos.insert(0, (TodoStatus::Todo, String::new()));
+          let time = chrono::offset::Local::now().format("%b %d %H:%M:%S");
+          todos.insert(0, (TodoStatus::Todo, String::new(), time.to_string()));
           editing_cursor = 0;
           editing = true;
         }
