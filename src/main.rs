@@ -22,7 +22,7 @@ struct Ui {
 }
 
 #[derive(Debug)]
-enum TodoStatus {
+enum Status {
   Todo,
   Done,
 }
@@ -96,7 +96,7 @@ impl Ui {
   }
 }
 
-impl TodoStatus {
+impl Status {
   fn toggle(&self) -> Self {
     match self {
       Self::Todo => Self::Done,
@@ -105,7 +105,7 @@ impl TodoStatus {
   }
 }
 
-fn uplist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
+fn uplist(todos: &Vec<(Status, String, String)>, todo_curr: &mut usize) {
   if *todo_curr > 0 {
     *todo_curr -= 1
   } else {
@@ -115,7 +115,7 @@ fn uplist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
   }
 }
 
-fn dwlist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
+fn dwlist(todos: &Vec<(Status, String, String)>, todo_curr: &mut usize) {
   if !todos.is_empty() && *todo_curr < (todos.len() - 1) {
     *todo_curr += 1
   } else {
@@ -123,55 +123,52 @@ fn dwlist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
   }
 }
 
-fn marktd(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: usize) {
+fn marktd(todos: &mut Vec<(Status, String, String)>, todo_curr: usize) {
   if todos.len() > todo_curr {
     let (mark, a, b) = &todos[todo_curr];
-    todos[todo_curr] = (TodoStatus::toggle(mark), a.to_string(), b.to_string())
+    todos[todo_curr] = (Status::toggle(mark), a.to_string(), b.to_string())
   }
 }
 
-fn delete(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
+fn delete(todos: &mut Vec<(Status, String, String)>, todo_curr: &mut usize) {
   if !todos.is_empty() {
     todos.remove(*todo_curr);
 
     if todos.len() == *todo_curr && !todos.is_empty() {
       *todo_curr -= 1
+    } else {
+      let mut ui = Ui::default();
+      ui.message = String::from("uuuuh not make this.");
     }
   }
 }
 
 // looks bad
-fn parse_line(line: &str) -> Option<(TodoStatus, String, String)> {
-  let t = |b: TodoStatus, a: Vec<&str>| (b, a[0].to_string(), a[1].to_string());
+fn parse_line(line: &str) -> Option<(Status, String, String)> {
+  let t = |b: Status, a: Vec<&str>| (b, a[0].to_string(), a[1].to_string());
 
   let todo = line
     .strip_prefix("Todo,")
-    .map(|content| t(TodoStatus::Todo, content.split(",").collect()));
+    .map(|content| t(Status::Todo, content.split(",").collect()));
   let done = line
     .strip_prefix("Done,")
-    .map(|content| t(TodoStatus::Done, content.split(",").collect()));
+    .map(|content| t(Status::Done, content.split(",").collect()));
   todo.or(done)
 }
 
-fn parse_to_string(status: &TodoStatus, content: &String, time: &String) -> String {
+fn parse_to_string(status: &Status, content: &String, time: &String) -> String {
   match status {
-    TodoStatus::Todo => format!("Todo,{},{}", content, time),
-    TodoStatus::Done => format!("Done,{},{}", content, time),
+    Status::Todo => format!("Todo,{},{}", content, time),
+    Status::Done => format!("Done,{},{}", content, time),
   }
 }
 
-fn load_todos(todos: &mut Vec<(TodoStatus, String, String)>, file_path: &str) -> io::Result<()> {
+fn load_todos(todos: &mut Vec<(Status, String, String)>, file_path: &str) -> io::Result<()> {
   let file = File::open(file_path)?;
 
   for (index, line) in io::BufReader::new(file).lines().enumerate() {
     match parse_line(&line?) {
-      // i can abstract this?
-      Some((TodoStatus::Todo, content, time)) => {
-        todos.push((TodoStatus::Todo, content.to_string(), time.to_string()))
-      }
-      Some((TodoStatus::Done, content, time)) => {
-        todos.push((TodoStatus::Done, content.to_string(), time.to_string()))
-      }
+      Some((status, content, time)) => todos.push((status, content.to_string(), time.to_string())),
       _ => {
         eprintln!("ERROR: at {}:{}", file_path, index + 1);
         std::process::exit(1);
@@ -181,10 +178,10 @@ fn load_todos(todos: &mut Vec<(TodoStatus, String, String)>, file_path: &str) ->
   Ok(())
 }
 
-fn save_todos(todos: &[(TodoStatus, String, String)], file_path: &str) {
+fn save_todos(todos: &[(Status, String, String)], file_path: &str) {
   let mut file = File::create(file_path).unwrap();
   for (status, todo, time) in todos {
-    if todo.len() > 0 && !matches!(status, TodoStatus::Done) {
+    if todo.len() > 0 && !matches!(status, Status::Done) {
       writeln!(file, "{}", parse_to_string(status, todo, time)).unwrap()
     }
   }
@@ -204,7 +201,7 @@ fn main() {
   let mut quit = false;
   let mut ui = Ui::default();
 
-  let mut todos = Vec::<(TodoStatus, String, String)>::new();
+  let mut todos = Vec::<(Status, String, String)>::new();
   let mut todo_curr: usize = 0;
 
   let mut editing = false;
@@ -226,13 +223,16 @@ fn main() {
     erase();
     ui.layout();
 
-    if let Some((_, _, at)) = &todos.get(todo_curr) {
+    if editing {
+      ui.message = String::from("Enter the new TODO:");
+    } else if let Some((_, _, at)) = &todos.get(todo_curr) {
       ui.message = format!("[todos: {}] created at: {}", todos.len(), at)
     } else {
-      ui.message = format!("Press 'E' to create a new todo")
+      ui.message = format!("Press 'E' to create a new TODO")
     }
 
     let bar = subwin(stdscr(), 1, ui.width, ui.height - 2, 0);
+
     wattron(bar, COLOR_PAIR(1) | A_BOLD());
     waddstr(bar, &ui.message);
     wbkgd(bar, COLOR_PAIR(1) | A_BOLD());
@@ -244,7 +244,7 @@ fn main() {
       // TODO: looks bad
       let todo = &format!(
         "[{}] {}",
-        if matches!(marked, TodoStatus::Done) {
+        if matches!(marked, Status::Done) {
           "x"
         } else {
           " "
@@ -271,17 +271,17 @@ fn main() {
 
     if let Some(key) = ui.key.take() {
       match key as u8 as char {
-        'j' => uplist(&todos, &mut todo_curr),
-        'k' => dwlist(&todos, &mut todo_curr),
-        'd' => marktd(&mut todos, todo_curr),
-        'a' => delete(&mut todos, &mut todo_curr),
-        'e' => {
+        'j' | 'J' => uplist(&todos, &mut todo_curr),
+        'k' | 'K' => dwlist(&todos, &mut todo_curr),
+        'd' | 'D' => marktd(&mut todos, todo_curr),
+        'a' | 'A' => delete(&mut todos, &mut todo_curr),
+        'e' | 'E' => {
           let time = chrono::offset::Local::now().format("%b %d %H:%M:%S");
-          todos.insert(0, (TodoStatus::Todo, String::new(), time.to_string()));
+          todos.insert(0, (Status::Todo, String::new(), time.to_string()));
           editing_cursor = 0;
           editing = true;
         }
-        'q' => quit = true,
+        'q' | 'Q' => quit = true,
         _ => ui.key = Some(key),
       }
     }
