@@ -17,6 +17,7 @@ const HIGHLIGHT_PAIR: i16 = 1;
 struct Ui {
   height: i32,
   width: i32,
+  message: String,
   key: Option<i32>,
 }
 
@@ -108,14 +109,14 @@ fn uplist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
   if *todo_curr > 0 {
     *todo_curr -= 1
   } else {
-    if todos.len() > 0 {
+    if !todos.is_empty() {
       *todo_curr = todos.len() - 1
     }
   }
 }
 
 fn dwlist(todos: &Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
-  if todos.len() > 0 && *todo_curr < (todos.len() - 1) {
+  if !todos.is_empty() && *todo_curr < (todos.len() - 1) {
     *todo_curr += 1
   } else {
     *todo_curr = 0
@@ -130,10 +131,10 @@ fn marktd(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: usize) {
 }
 
 fn delete(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) {
-  if todos.len() > 0 {
+  if !todos.is_empty() {
     todos.remove(*todo_curr);
 
-    if todos.len() == *todo_curr && todos.len() != 0 {
+    if todos.len() == *todo_curr && !todos.is_empty() {
       *todo_curr -= 1
     }
   }
@@ -225,17 +226,15 @@ fn main() {
     erase();
     ui.layout();
 
-    let message: String;
-
     if let Some((_, _, at)) = &todos.get(todo_curr) {
-      message = format!("[todos: {}] created at: {}", todos.len(), at)
+      ui.message = format!("[todos: {}] created at: {}", todos.len(), at)
     } else {
-      message = format!("Press 'E' to create a new todo")
+      ui.message = format!("Press 'E' to create a new todo")
     }
 
     let bar = subwin(stdscr(), 1, ui.width, ui.height - 2, 0);
     wattron(bar, COLOR_PAIR(1) | A_BOLD());
-    waddstr(bar, &message);
+    waddstr(bar, &ui.message);
     wbkgd(bar, COLOR_PAIR(1) | A_BOLD());
     wattroff(bar, COLOR_PAIR(1) | A_BOLD());
 
