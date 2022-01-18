@@ -49,7 +49,7 @@ impl Ui {
 
         constants::KEY_LEFT => {
           if *cursor > 0 {
-            *cursor += 1
+            *cursor -= 1
           }
         }
 
