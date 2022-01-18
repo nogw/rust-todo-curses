@@ -85,6 +85,7 @@ name = "todo-rs"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "libc",
  "ncurses",
 ]
 

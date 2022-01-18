@@ -181,7 +181,7 @@ fn load_todos(todos: &mut Vec<(TodoStatus, String, String)>, file_path: &str) ->
 fn save_todos(todos: &[(TodoStatus, String, String)], file_path: &str) {
   let mut file = File::create(file_path).unwrap();
   for (status, todo, time) in todos {
-    if todo.len() > 0 {
+    if todo.len() > 0 && !matches!(status, TodoStatus::Done) {
       writeln!(file, "{}", parse_to_string(status, todo, time)).unwrap()
     }
   }
