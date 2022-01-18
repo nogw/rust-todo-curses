@@ -275,6 +275,11 @@ fn main() {
         'k' | 'K' => dwlist(&todos, &mut todo_curr),
         'd' | 'D' => marktd(&mut todos, todo_curr),
         'a' | 'A' => delete(&mut todos, &mut todo_curr),
+        'r' | 'R' => {
+          let (_, t, _) = &todos[todo_curr];
+          editing_cursor = t.len();
+          editing = true;
+        }
         'e' | 'E' => {
           let time = chrono::offset::Local::now().format("%b %d %H:%M:%S");
           todos.insert(0, (Status::Todo, String::new(), time.to_string()));
