@@ -59,6 +59,7 @@ impl Ui {
           }
         }
 
+        // it only works if you press CTRL at the same time
         constants::KEY_BACKSPACE => {
           if *cursor > 0 {
             *cursor -= 1;
@@ -138,6 +139,7 @@ fn delete(todos: &mut Vec<(TodoStatus, String, String)>, todo_curr: &mut usize) 
   }
 }
 
+// looks bad
 fn parse_line(line: &str) -> Option<(TodoStatus, String, String)> {
   let t = |b: TodoStatus, a: Vec<&str>| (b, a[0].to_string(), a[1].to_string());
 
@@ -240,6 +242,7 @@ fn main() {
     for (index, (marked, content, _)) in todos.iter_mut().enumerate() {
       mv(index as i32, 0);
 
+      // TODO: looks bad
       let todo = &format!(
         "[{}] {}",
         if matches!(marked, TodoStatus::Done) {
